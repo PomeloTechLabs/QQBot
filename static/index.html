@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VintagePomeloBot 控制台</title>
+    <style>
+        :root {
+            --bg: #f4f5f8;
+            --panel: #ffffff;
+            --panel-soft: #f8f9fc;
+            --text: #1f2430;
+            --muted: #697387;
+            --line: #d8deea;
+            --accent: #4b6bfb;
+            --accent-soft: #eef2ff;
+            --success: #1e9e67;
+            --danger: #c84545;
+            --danger-soft: #fff1f1;
+            --shadow: 0 18px 42px rgba(44, 62, 110, 0.08);
+            --radius: 18px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: var(--text);
+            background: linear-gradient(180deg, #f7f8fb 0%, #eef1f7 100%);
+        }
+
+        button,
+        input,
+        textarea {
+            font: inherit;
+        }
+
+        .page {
+            max-width: 1380px;
+            margin: 0 auto;
+            padding: 28px 20px 40px;
+        }
+
+        .loading {
+            min-height: 60vh;
+            display: grid;
+            place-items: center;
+            color: var(--muted);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .shell {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 340px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .main-panel,
+        .side-panel {
+            background: var(--panel);
+            border: 1px solid rgba(216, 222, 234, 0.8);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .main-panel {
+            padding: 28px;
+        }
+
+        .side-panel {
+            padding: 22px;
+            position: sticky;
+            top: 20px;
+        }
+
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .hero h1 {
+            margin: 0 0 10px;
+            font-size: 34px;
+            line-height: 1.05;
+        }
+
+        .hero p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.7;
+            max-width: 720px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .save-chip {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .save-chip.visible {
+            opacity: 1;
+        }
+
+        .grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .section {
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            background: var(--panel-soft);
+            padding: 20px;
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            margin: 0 0 6px;
+            font-size: 20px;
+        }
+
+        .section-subtitle {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 13px;
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .field,
+        .textarea-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: #fff;
+            color: var(--text);
+            padding: 12px 14px;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            border-color: rgba(75, 107, 251, 0.7);
+            box-shadow: 0 0 0 4px rgba(75, 107, 251, 0.12);
+        }
+
+        input[readonly] {
+            background: #f1f3f8;
+            color: var(--muted);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            line-height: 1.65;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: #fff;
+        }
+
+        .toggle-row strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .toggle-row span {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .switch {
+            position: relative;
+            width: 52px;
+            height: 30px;
+            flex: none;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            inset: 0;
+            background: #c9cfdd;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .slider::before {
+            content: "";
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            left: 4px;
+            top: 4px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 4px 10px rgba(20, 28, 50, 0.16);
+            transition: 0.2s ease;
+        }
+
+        .switch input:checked + .slider {
+            background: var(--accent);
+        }
+
+        .switch input:checked + .slider::before {
+            transform: translateX(22px);
+        }
+
+        .chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: wait;
+            transform: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #e8ecf6;
+            color: #344055;
+        }
+
+        .btn-danger {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .knowledge-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .knowledge-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.55;
+            word-break: break-all;
+        }
+
+        .knowledge-layout {
+            display: grid;
+            grid-template-columns: 320px minmax(0, 1fr);
+            gap: 18px;
+        }
+
+        .knowledge-list {
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .knowledge-list-empty {
+            padding: 20px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .knowledge-item {
+            width: 100%;
+            border: 0;
+            border-bottom: 1px solid #edf0f6;
+            background: transparent;
+            text-align: left;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .knowledge-item:last-child {
+            border-bottom: 0;
+        }
+
+        .knowledge-item:hover,
+        .knowledge-item.active {
+            background: var(--accent-soft);
+        }
+
+        .knowledge-item-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-weight: 700;
+            line-height: 1.4;
+        }
+
+        .knowledge-item-id {
+            color: var(--accent);
+            font-size: 12px;
+            flex: none;
+        }
+
+        .knowledge-item-meta {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .knowledge-editor {
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: #fff;
+            padding: 18px;
+        }
+
+        .knowledge-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .candidate-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .candidate-card {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: #fff;
+            padding: 16px;
+        }
+
+        .candidate-title-row,
+        .candidate-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .candidate-title {
+            margin: 0;
+            font-size: 16px;
+            line-height: 1.45;
+        }
+
+        .candidate-meta,
+        .candidate-evidence {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .candidate-content {
+            margin: 12px 0;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        .candidate-evidence {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: #f5f7fb;
+        }
+
+        .candidate-empty {
+            padding: 18px;
+            border: 1px dashed var(--line);
+            border-radius: 14px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .agent-live-section {
+            background: #f8faff;
+        }
+
+        .agent-live-status {
+            background: #eef1f6;
+            color: var(--muted);
+        }
+
+        .agent-live-status.connected {
+            background: #e9f8f0;
+            color: var(--success);
+        }
+
+        .agent-live-status.reconnecting {
+            background: #fff8df;
+            color: #8b6914;
+        }
+
+        .agent-live-feed {
+            display: grid;
+            gap: 10px;
+            max-height: 520px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .agent-live-empty {
+            padding: 24px;
+            border: 1px dashed var(--line);
+            border-radius: 16px;
+            background: #fff;
+            color: var(--muted);
+            line-height: 1.7;
+            text-align: center;
+        }
+
+        .agent-live-event {
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--accent);
+            border-radius: 14px;
+            background: #fff;
+            padding: 13px 15px;
+        }
+
+        .agent-live-event.completed {
+            border-left-color: var(--success);
+        }
+
+        .agent-live-event.failed {
+            border-left-color: var(--danger);
+            background: var(--danger-soft);
+        }
+
+        .agent-live-event-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 7px;
+        }
+
+        .agent-live-operation {
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .agent-live-time {
+            flex: none;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .agent-live-message,
+        .agent-live-detail {
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .agent-live-detail {
+            margin: 9px 0 0;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #f4f6fb;
+            color: #38445a;
+            font: 12px/1.65 Consolas, "Microsoft YaHei", monospace;
+        }
+
+        .side-block + .side-block {
+            margin-top: 18px;
+        }
+
+        .side-title {
+            margin: 0 0 12px;
+            font-size: 17px;
+        }
+
+        .preview-card,
+        .meta-card {
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: var(--panel-soft);
+            padding: 16px;
+        }
+
+        .preview-name {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .preview-message {
+            padding: 14px;
+            border-radius: 14px;
+            background: #fff;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            margin-bottom: 12px;
+        }
+
+        .preview-notices {
+            margin: 0;
+            padding-left: 18px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .meta-line {
+            margin: 0 0 10px;
+            color: var(--muted);
+            line-height: 1.7;
+            word-break: break-all;
+            font-size: 13px;
+        }
+
+        .meta-line strong {
+            color: var(--text);
+        }
+
+        .toast {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            max-width: 360px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(26, 31, 44, 0.92);
+            color: #fff;
+            box-shadow: 0 18px 34px rgba(20, 24, 38, 0.24);
+            opacity: 0;
+            transform: translateY(16px);
+            transition: 0.2s ease;
+            pointer-events: none;
+            line-height: 1.55;
+        }
+
+        .toast.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 1140px) {
+            .shell {
+                grid-template-columns: 1fr;
+            }
+
+            .side-panel {
+                position: static;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .knowledge-layout,
+            .field-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .page {
+                padding: 16px 12px 28px;
+            }
+
+            .main-panel,
+            .side-panel {
+                border-radius: 20px;
+            }
+
+            .main-panel {
+                padding: 20px;
+            }
+
+            .hero {
+                flex-direction: column;
+            }
+
+            .hero h1 {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div id="loading" class="loading">正在加载控制台...</div>
+
+        <div id="content" class="shell hidden">
+            <main class="main-panel">
+                <div class="hero">
+                    <div>
+                        <div class="pill">Web Console</div>
+                        <h1>Pomelo Control</h1>
+                        <p>这里可以直接改欢迎词、触发词和知识库条目。知识库保存后会同时更新本地文件和机器人当前内存，下一次回答就会使用新内容。</p>
+                    </div>
+                    <div class="actions" style="margin-top: 0;">
+                        <button id="agent-live-jump-btn" class="btn btn-secondary" type="button">查看实时 Agent 会话</button>
+                        <div id="save-status" class="pill save-chip">已保存并热更新</div>
+                    </div>
+                </div>
+
+                <div class="grid">
+                    <section id="agent-live-section" class="section agent-live-section">
+                        <div class="section-head">
+                            <div>
+                                <h2 class="section-title">实时 Agent 会话</h2>
+                                <p class="section-subtitle">仅在本网页打开期间接收状态。展示可见执行阶段、网页搜索/读取工具可用状态、错误和最终答复；不会显示隐藏思考，也不会写入本地记录。</p>
+                            </div>
+                            <div class="actions" style="margin-top: 0;">
+                                <div id="agent-live-status" class="pill agent-live-status">正在连接…</div>
+                                <button id="agent-live-clear-btn" class="btn btn-secondary" type="button">清空当前视图</button>
+                            </div>
+                        </div>
+                        <div id="agent-live-feed" class="agent-live-feed" aria-live="polite">
+                            <div class="agent-live-empty">等待 Agent 任务。关闭或刷新页面后，本次会话视图会自然丢弃，服务端不会保存这些过程事件。</div>
+                        </div>
+                    </section>
+
+                    <section class="section">
+                        <div class="section-head">
+                            <div>
+                                <h2 class="section-title">群消息批处理</h2>
+                                <p class="section-subtitle">未 @ 机器人的普通群消息会先累计；达到任一条件才调用一次低推理分流，避免频繁占用显卡。</p>
+                            </div>
+                        </div>
+                        <div class="toggle-row" style="margin-bottom: 16px;">
+                            <div>
+                                <strong>启用普通群消息批处理</strong>
+                                <span>关闭时，未 @ 机器人的普通聊天不会送入 Agent 分流；@、昵称和产品关键词触发仍正常工作。</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="monitor-all-group-messages">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="field-grid">
+                            <div class="field">
+                                <label for="group-batch-size">累计消息数</label>
+                                <input type="number" id="group-batch-size" min="2" max="500" step="1">
+                                <div class="hint">达到此条数立即进行一次批量判断。默认 50 条。</div>
+                            </div>
+                            <div class="field">
+                                <label for="group-batch-wait-seconds">最长等待（秒）</label>
+                                <input type="number" id="group-batch-wait-seconds" min="15" max="86400" step="15">
+                                <div class="hint">未达到条数时，等待到此时长后再处理。600 秒 = 10 分钟。</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="section">
+                        <div class="section-head">
+                            <div>
+                                <h2 class="section-title">核心设定</h2>
+                                <p class="section-subtitle">机器人昵称和当前连接信息。</p>
+                            </div>
+                        </div>
+                        <div class="field-grid">
+                            <div class="field">
+                                <label for="bot-qq">机器人 QQ</label>
+                                <input type="text" id="bot-qq" readonly>
+                                <div class="hint">这个值由 NapCat 连接决定，当前页面只展示。</div>
+                            </div>
+                            <div class="field">
+                                <label for="bot-nickname">机器人昵称</label>
+                                <input type="text" id="bot-nickname" placeholder="例如：小柚">
+                                <div class="hint">群里直接叫这个名字，也会参与回复判断。</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="section">
+                        <div class="section-head">
+                            <div>
+                                <h2 class="section-title">入群欢迎</h2>
+                                <p class="section-subtitle">支持模板变量和注意事项列表，右侧会实时预览。</p>
+                            </div>
+                        </div>
+
+                        <div class="grid">
+                            <div class="toggle-row">
+                                <div>
+                                    <strong>启用欢迎消息</strong>
+                                    <span>新成员入群时自动发送欢迎词。</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="welcome-enabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="toggle-row">
+                                <div>
+                                    <strong>自动 @ 新成员</strong>
+                                    <span>开启后会优先提醒刚进群的用户。</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="welcome-at">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="textarea-wrap" style="margin-top: 16px;">
+                            <label for="welcome-template">欢迎词模板</label>
+                            <textarea id="welcome-template" placeholder="欢迎加入本群，我是 {bot_nickname}。"></textarea>
+                            <div class="hint">可用变量：{user_id}、{group_id}、{bot_nickname}、{bot_qq}</div>
+                        </div>
+
+                        <div class="textarea-wrap" style="margin-top: 16px;">
+                            <label for="welcome-notices">注意事项</label>
+                            <textarea id="welcome-notices" placeholder="每行一条，例如：提问尽量附上报错信息。"></textarea>
+                            <div class="hint">保存后会在欢迎词下方按编号显示。</div>
+                        </div>
+                    </section>
+
+                    <section class="section">
+                        <div class="section-head">
+                            <div>
+                                <h2 class="section-title">触发词</h2>
+                                <p class="section-subtitle">帮助机器人判断哪些消息需要接话。</p>
+                            </div>
+                        </div>
+
+                        <div class="textarea-wrap">
+                            <label for="app-keywords">应用关键词</label>
+                            <textarea id="app-keywords" placeholder="旧柚, jiu you, jiuyou"></textarea>
+                            <div class="hint">支持逗号、中文逗号或换行分隔。</div>
+                            <div id="app-chip-row" class="chip-row"></div>
+                        </div>
+
+                        <div class="textarea-wrap" style="margin-top: 16px;">
+                            <label for="help-keywords">求助关键词</label>
+                            <textarea id="help-keywords" placeholder="怎么、如何、报错、闪退"></textarea>
+                            <div class="hint">这些词会帮助机器人判断是不是需要主动回复。</div>
+                            <div id="help-chip-row" class="chip-row"></div>
+                        </div>
+
+                        <div class="textarea-wrap" style="margin-top: 16px;">
+                            <label for="blocked-keywords">违规屏蔽词</label>
+                            <textarea id="blocked-keywords" placeholder="辱骂词1, 辱骂词2, 不当词"></textarea>
+                            <div class="hint">支持英文逗号、中文逗号或换行分隔。群消息命中后，机器人会立即 @ 发言人提醒。</div>
+                            <div id="blocked-chip-row" class="chip-row"></div>
+                        </div>
+
+                        <div class="textarea-wrap" style="margin-top: 16px;">
+                            <label for="violation-template">违规提醒内容</label>
+                            <textarea id="violation-template" placeholder="请注意文明发言，本群不允许发送不当内容，请及时撤回或修改。"></textarea>
+                            <div class="hint">可用变量：{user_id}、{group_id}、{bot_nickname}、{bot_qq}、{matched_keywords}、{matched_count}</div>
+                        </div>
+
+                        <div class="actions">
+                            <button id="save-config-btn" class="btn btn-primary" type="button">保存配置并热更新</button>
+                        </div>
+                    </section>
+
+                    <section class="section">
+                        <div class="section-head">
+                            <div>
+                                <h2 class="section-title">知识库编辑</h2>
+                                <p class="section-subtitle">这里改的是机器人真正回答时会带进去的本地知识库。</p>
+                            </div>
+                        </div>
+
+                        <div class="knowledge-toolbar">
+                            <div class="knowledge-meta">
+                                 <div>条目数量：<strong id="kb-count">0</strong></div>
+                                 <div id="kb-json-path">JSON：-</div>
+                                 <div id="kb-render-path">Markdown：-</div>
+                                 <div id="kb-skill-path">操作技能：-</div>
+                            </div>
+                            <div class="actions" style="margin-top: 0;">
+                                <button id="kb-new-btn" class="btn btn-secondary" type="button">新建条目</button>
+                                <button id="kb-reload-btn" class="btn btn-secondary" type="button">从磁盘重载</button>
+                            </div>
+                        </div>
+
+                        <div class="knowledge-layout">
+                            <div id="knowledge-list" class="knowledge-list"></div>
+
+                            <div class="knowledge-editor">
+                                <div class="field-grid">
+                                    <div class="field">
+                                        <label for="kb-id">条目 ID</label>
+                                        <input type="text" id="kb-id" readonly>
+                                    </div>
+                                    <div class="field">
+                                        <label for="kb-updated-by">更新人</label>
+                                        <input type="text" id="kb-updated-by" placeholder="例如：web_console">
+                                    </div>
+                                    <div class="field">
+                                        <label for="kb-title">标题</label>
+                                        <input type="text" id="kb-title" placeholder="例如：RPGMaker RTP 缺失排查">
+                                    </div>
+                                    <div class="field">
+                                        <label for="kb-category">分类</label>
+                                        <input type="text" id="kb-category" placeholder="例如：RPGMaker">
+                                    </div>
+                                </div>
+
+                                <div class="textarea-wrap" style="margin-top: 16px;">
+                                    <label for="kb-tags">标签</label>
+                                    <input type="text" id="kb-tags" placeholder="用逗号分隔，例如：RTP, RPGMaker, 报错">
+                                    <div class="hint">标签只用于整理和人工查看。</div>
+                                </div>
+
+                                <div class="textarea-wrap" style="margin-top: 16px;">
+                                    <label for="kb-content">正文</label>
+                                    <textarea id="kb-content" placeholder="这里写简洁、稳定、适合直接提供给模型的知识内容。"></textarea>
+                                    <div class="hint">建议一条只讲一个主题，描述尽量短、准、可执行。</div>
+                                </div>
+
+                                <div class="knowledge-actions">
+                                    <button id="kb-reset-btn" class="btn btn-secondary" type="button">清空编辑器</button>
+                                    <button id="kb-delete-btn" class="btn btn-danger" type="button">删除条目</button>
+                                    <button id="kb-save-btn" class="btn btn-primary" type="button">保存条目并热更新</button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="section">
+                        <div class="section-head">
+                            <div>
+                                <h2 class="section-title">待审批知识</h2>
+                                <p class="section-subtitle">机器人和群内问答只会先生成候选。请核对正文、置信度和证据后再发布；发布后立即进入正式知识库。</p>
+                            </div>
+                            <div class="actions" style="margin-top: 0;">
+                                <div class="pill">待处理 <span id="candidate-count">0</span> 条</div>
+                                <button id="candidate-refresh-btn" class="btn btn-secondary" type="button">刷新候选</button>
+                            </div>
+                        </div>
+                        <div id="candidate-list" class="candidate-list"></div>
+                    </section>
+                </div>
+            </main>
+
+            <aside class="side-panel">
+                <div class="side-block">
+                    <h3 class="side-title">欢迎预览</h3>
+                    <div class="preview-card">
+                        <div id="preview-name" class="preview-name">小柚</div>
+                        <div id="preview-message" class="preview-message">欢迎加入本群，我是小柚。</div>
+                        <ol id="preview-notices" class="preview-notices"></ol>
+                    </div>
+                </div>
+
+                <div class="side-block">
+                    <h3 class="side-title">知识库状态</h3>
+                    <div class="meta-card">
+                        <p class="meta-line"><strong>当前选中：</strong><span id="kb-active-title">未选择</span></p>
+                        <p class="meta-line"><strong>分类：</strong><span id="kb-active-category">-</span></p>
+                        <p class="meta-line"><strong>标签：</strong><span id="kb-active-tags">-</span></p>
+                        <p class="meta-line"><strong>最后更新：</strong><span id="kb-active-updated">-</span></p>
+                        <p class="meta-line"><strong>用户记忆：</strong><span id="memory-status">-</span></p>
+                        <p class="meta-line"><strong>说明：</strong>保存后会同步更新 `knowledge_base.json` 和 `knowledge_base.md`，并立即替换机器人正在使用的内存知识库。</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const CONFIG_API = "/api/config";
+        const KNOWLEDGE_API = "/api/knowledge-base";
+        const KNOWLEDGE_RELOAD_API = "/api/knowledge-base/reload";
+        const KNOWLEDGE_ITEMS_API = "/api/knowledge-base/items";
+        const KNOWLEDGE_CANDIDATES_API = "/api/knowledge-candidates";
+        const AGENT_ACTIVITY_STREAM_API = "/api/agent-activity/stream";
+
+        const toast = document.getElementById("toast");
+        const saveStatus = document.getElementById("save-status");
+
+        const state = {
+            knowledgeItems: [],
+            activeKnowledgeId: null,
+            candidates: [],
+            agentEventSource: null,
+            agentEventCount: 0
+        };
+
+        function splitKeywords(value) {
+            return value
+                .split(/[,，\n]/)
+                .map((item) => item.trim())
+                .filter(Boolean);
+        }
+
+        function showToast(message, isError = false) {
+            toast.textContent = message;
+            toast.style.background = isError ? "rgba(133, 28, 58, 0.94)" : "rgba(26, 31, 44, 0.92)";
+            toast.classList.add("visible");
+            clearTimeout(showToast.timer);
+            showToast.timer = setTimeout(() => toast.classList.remove("visible"), 2600);
+        }
+
+        function showSavedChip() {
+            saveStatus.classList.add("visible");
+            clearTimeout(showSavedChip.timer);
+            showSavedChip.timer = setTimeout(() => saveStatus.classList.remove("visible"), 2200);
+        }
+
+        function setAgentLiveStatus(text, mode = "") {
+            const status = document.getElementById("agent-live-status");
+            status.textContent = text;
+            status.className = `pill agent-live-status ${mode}`.trim();
+        }
+
+        function formatAgentDetail(detail) {
+            if (!detail || typeof detail !== "object") {
+                return "";
+            }
+            const lines = [];
+            if (detail.knowledge_context !== undefined) {
+                lines.push(`本地知识库检索：${detail.knowledge_context ? "已注入" : "未命中"}`);
+            }
+            if (detail.public_web_available !== undefined) {
+                lines.push(`公开网页工具：${detail.public_web_available ? "可由 Agent 按需调用" : "本次未开放"}`);
+            }
+            if (detail.search_mcp_available !== undefined) {
+                lines.push(`关键词搜索 MCP：${detail.search_mcp_available ? "已允许 Agent 调用" : "本次未开放"}`);
+            }
+            if (detail.reason) {
+                lines.push(`详情：${detail.reason}`);
+            }
+            if (detail.answer) {
+                lines.push(`Agent 可见答复：\n${detail.answer}`);
+            }
+            return lines.join("\n");
+        }
+
+        function renderAgentEmpty() {
+            const feed = document.getElementById("agent-live-feed");
+            feed.replaceChildren();
+            const empty = document.createElement("div");
+            empty.className = "agent-live-empty";
+            empty.textContent = "等待 Agent 任务。关闭或刷新页面后，本次会话视图会自然丢弃，服务端不会保存这些过程事件。";
+            feed.appendChild(empty);
+        }
+
+        function appendAgentEvent(event) {
+            const feed = document.getElementById("agent-live-feed");
+            const empty = feed.querySelector(".agent-live-empty");
+            if (empty) {
+                empty.remove();
+            }
+
+            const card = document.createElement("article");
+            card.className = `agent-live-event ${event.phase || "progress"}`;
+            const head = document.createElement("div");
+            head.className = "agent-live-event-head";
+            const operation = document.createElement("div");
+            operation.className = "agent-live-operation";
+            operation.textContent = event.operation || "Agent 任务";
+            const time = document.createElement("time");
+            time.className = "agent-live-time";
+            const parsedTime = event.at ? new Date(event.at) : null;
+            time.textContent = parsedTime && !Number.isNaN(parsedTime.getTime())
+                ? parsedTime.toLocaleTimeString("zh-CN", { hour12: false })
+                : "刚刚";
+            head.append(operation, time);
+
+            const message = document.createElement("div");
+            message.className = "agent-live-message";
+            message.textContent = event.message || "状态已更新。";
+            card.append(head, message);
+
+            const detailText = formatAgentDetail(event.detail);
+            if (detailText) {
+                const detail = document.createElement("pre");
+                detail.className = "agent-live-detail";
+                detail.textContent = detailText;
+                card.appendChild(detail);
+            }
+            feed.appendChild(card);
+            state.agentEventCount += 1;
+            while (feed.children.length > 80) {
+                feed.firstElementChild.remove();
+            }
+            feed.scrollTop = feed.scrollHeight;
+        }
+
+        function connectAgentActivity() {
+            if (!window.EventSource) {
+                setAgentLiveStatus("浏览器不支持实时会话", "reconnecting");
+                return;
+            }
+            if (state.agentEventSource) {
+                state.agentEventSource.close();
+            }
+            const source = new EventSource(AGENT_ACTIVITY_STREAM_API);
+            state.agentEventSource = source;
+            source.addEventListener("agent_activity", (event) => {
+                try {
+                    appendAgentEvent(JSON.parse(event.data));
+                } catch (error) {
+                    console.warn("无法读取实时 Agent 事件", error);
+                }
+            });
+            source.onopen = () => setAgentLiveStatus("实时查看中", "connected");
+            source.onerror = () => setAgentLiveStatus("连接中断，正在重连…", "reconnecting");
+        }
+
+        function renderChips(containerId, values) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+            values.slice(0, 12).forEach((value) => {
+                const chip = document.createElement("span");
+                chip.className = "chip";
+                chip.textContent = value;
+                container.appendChild(chip);
+            });
+        }
+
+        function fillPreview() {
+            const nickname = document.getElementById("bot-nickname").value.trim() || "小柚";
+            const botQq = document.getElementById("bot-qq").value.trim() || "10000";
+            const template = document.getElementById("welcome-template").value.trim() || "欢迎加入本群，我是 {bot_nickname}。";
+            const notices = document.getElementById("welcome-notices").value
+                .split("\n")
+                .map((item) => item.trim())
+                .filter(Boolean);
+
+            const rendered = template
+                .replaceAll("{user_id}", "10001")
+                .replaceAll("{group_id}", "888888")
+                .replaceAll("{bot_nickname}", nickname)
+                .replaceAll("{bot_qq}", botQq);
+
+            document.getElementById("preview-name").textContent = nickname;
+            document.getElementById("preview-message").textContent = rendered;
+
+            const previewNotices = document.getElementById("preview-notices");
+            previewNotices.innerHTML = "";
+            notices.forEach((item) => {
+                const li = document.createElement("li");
+                li.textContent = item;
+                previewNotices.appendChild(li);
+            });
+
+            renderChips("app-chip-row", splitKeywords(document.getElementById("app-keywords").value));
+            renderChips("help-chip-row", splitKeywords(document.getElementById("help-keywords").value));
+            renderChips("blocked-chip-row", splitKeywords(document.getElementById("blocked-keywords").value));
+        }
+
+        function syncGroupBatchControls() {
+            const enabled = document.getElementById("monitor-all-group-messages").checked;
+            document.getElementById("group-batch-size").disabled = !enabled;
+            document.getElementById("group-batch-wait-seconds").disabled = !enabled;
+        }
+
+        function getKnowledgeItemById(itemId) {
+            return state.knowledgeItems.find((item) => item.id === itemId) || null;
+        }
+
+        function updateKnowledgeSidebar(item) {
+            document.getElementById("kb-active-title").textContent = item ? item.title : "未选择";
+            document.getElementById("kb-active-category").textContent = item ? item.category : "-";
+            document.getElementById("kb-active-tags").textContent = item && item.tags.length ? item.tags.join(", ") : "-";
+            document.getElementById("kb-active-updated").textContent = item ? `${item.updated_at} / ${item.updated_by}` : "-";
+        }
+
+        function fillKnowledgeEditor(item) {
+            document.getElementById("kb-id").value = item ? `#${item.id}` : "新条目";
+            document.getElementById("kb-updated-by").value = item ? item.updated_by : "web_console";
+            document.getElementById("kb-title").value = item ? item.title : "";
+            document.getElementById("kb-category").value = item ? item.category : "";
+            document.getElementById("kb-tags").value = item ? item.tags.join(", ") : "";
+            document.getElementById("kb-content").value = item ? item.content : "";
+            updateKnowledgeSidebar(item);
+        }
+
+        function renderKnowledgeList() {
+            const container = document.getElementById("knowledge-list");
+            container.innerHTML = "";
+
+            if (!state.knowledgeItems.length) {
+                const empty = document.createElement("div");
+                empty.className = "knowledge-list-empty";
+                empty.textContent = "当前还没有条目。点右上角“新建条目”就可以开始编辑。";
+                container.appendChild(empty);
+                return;
+            }
+
+            state.knowledgeItems.forEach((item) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "knowledge-item";
+                if (item.id === state.activeKnowledgeId) {
+                    button.classList.add("active");
+                }
+                button.innerHTML = `
+                    <div class="knowledge-item-title">
+                        <span class="knowledge-item-id">#${item.id}</span>
+                        <span>${item.title}</span>
+                    </div>
+                    <div class="knowledge-item-meta">${item.category} · ${item.updated_at}</div>
+                `;
+                button.addEventListener("click", () => {
+                    state.activeKnowledgeId = item.id;
+                    fillKnowledgeEditor(item);
+                    renderKnowledgeList();
+                });
+                container.appendChild(button);
+            });
+        }
+
+        function collectKnowledgePayload() {
+            return {
+                updated_by: document.getElementById("kb-updated-by").value.trim(),
+                title: document.getElementById("kb-title").value.trim(),
+                category: document.getElementById("kb-category").value.trim(),
+                tags: splitKeywords(document.getElementById("kb-tags").value),
+                content: document.getElementById("kb-content").value.trim()
+            };
+        }
+
+        function resetKnowledgeEditor() {
+            state.activeKnowledgeId = null;
+            fillKnowledgeEditor(null);
+            renderKnowledgeList();
+        }
+
+        function createCandidateButton(label, className, onClick) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `btn ${className}`;
+            button.textContent = label;
+            button.addEventListener("click", onClick);
+            return button;
+        }
+
+        function renderCandidates() {
+            const container = document.getElementById("candidate-list");
+            container.replaceChildren();
+            document.getElementById("candidate-count").textContent = String(state.candidates.length);
+
+            if (!state.candidates.length) {
+                const empty = document.createElement("div");
+                empty.className = "candidate-empty";
+                empty.textContent = "当前没有待审批的知识候选。群内有效问答和机器人确认过的可复用方案会显示在这里。";
+                container.appendChild(empty);
+                return;
+            }
+
+            state.candidates.forEach((item) => {
+                const card = document.createElement("article");
+                card.className = "candidate-card";
+
+                const titleRow = document.createElement("div");
+                titleRow.className = "candidate-title-row";
+                const title = document.createElement("h3");
+                title.className = "candidate-title";
+                title.textContent = `#${item.id} ${item.title}`;
+                const meta = document.createElement("div");
+                meta.className = "candidate-meta";
+                meta.textContent = `${item.category} · 置信度 ${Math.round((Number(item.confidence) || 0) * 100)}% · ${item.created_at || "-"}`;
+                titleRow.append(title, meta);
+
+                const tags = document.createElement("div");
+                tags.className = "chip-row";
+                (item.tags || []).forEach((tag) => {
+                    const chip = document.createElement("span");
+                    chip.className = "chip";
+                    chip.textContent = tag;
+                    tags.appendChild(chip);
+                });
+
+                const content = document.createElement("div");
+                content.className = "candidate-content";
+                content.textContent = item.content || "";
+
+                const evidence = document.createElement("div");
+                evidence.className = "candidate-evidence";
+                evidence.textContent = `证据 / 来源：\n${item.evidence || "未提供"}`;
+
+                const actions = document.createElement("div");
+                actions.className = "candidate-actions";
+                actions.append(
+                    createCandidateButton("发布到知识库", "btn-primary", () => reviewCandidate(item, "approve")),
+                    createCandidateButton("驳回", "btn-danger", () => reviewCandidate(item, "reject"))
+                );
+                card.append(titleRow, tags, content, evidence, actions);
+                container.appendChild(card);
+            });
+        }
+
+        async function loadCandidates() {
+            const res = await fetch(`${KNOWLEDGE_CANDIDATES_API}?status=pending`);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            const payload = await res.json();
+            state.candidates = payload.items || [];
+            renderCandidates();
+        }
+
+        async function reviewCandidate(item, action) {
+            const actionText = action === "approve" ? "发布到正式知识库" : "驳回";
+            if (!window.confirm(`确定${actionText}候选“${item.title}”吗？`)) {
+                return;
+            }
+            try {
+                const res = await fetch(`${KNOWLEDGE_CANDIDATES_API}/${item.id}/${action}`, { method: "POST" });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || `HTTP ${res.status}`);
+                }
+                await Promise.all([loadCandidates(), loadKnowledgeBase()]);
+                showSavedChip();
+                showToast(action === "approve" ? "候选已发布并热更新知识库。" : "候选已驳回。");
+            } catch (error) {
+                showToast(`处理候选失败：${error.message || error}`, true);
+            }
+        }
+
+        async function loadConfig() {
+            const res = await fetch(CONFIG_API);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
+            const currentConfig = await res.json();
+            document.getElementById("bot-qq").value = currentConfig.bot.qq_id || "";
+            document.getElementById("bot-nickname").value = currentConfig.bot.nickname || "";
+            document.getElementById("welcome-enabled").checked = Boolean(currentConfig.welcome.enabled);
+            document.getElementById("welcome-at").checked = Boolean(currentConfig.welcome.enable_at);
+            document.getElementById("welcome-template").value = currentConfig.welcome.message_template || "";
+            document.getElementById("welcome-notices").value = (currentConfig.welcome.notice_items || []).join("\n");
+            document.getElementById("app-keywords").value = (currentConfig.filter.app_keywords || []).join(", ");
+            document.getElementById("help-keywords").value = (currentConfig.filter.help_keywords || []).join(", ");
+            document.getElementById("blocked-keywords").value = (currentConfig.filter.blocked_keywords || []).join(", ");
+            document.getElementById("violation-template").value = currentConfig.filter.violation_reply_template || "";
+            const agent = currentConfig.agent || {};
+            document.getElementById("monitor-all-group-messages").checked = Boolean(agent.monitor_all_group_messages);
+            document.getElementById("group-batch-size").value = String(agent.group_batch_size || 50);
+            document.getElementById("group-batch-wait-seconds").value = String(agent.group_batch_wait_seconds || 600);
+            syncGroupBatchControls();
+            const memory = currentConfig.memory || {};
+            document.getElementById("memory-status").textContent = memory.enabled
+                ? `已启用：${memory.directory || "data/conversation_memories"}（最近 ${memory.recent_turn_limit || 10} 条 + 摘要）`
+                : "未启用";
+            fillPreview();
+        }
+
+        async function loadKnowledgeBase(selectId = null) {
+            const res = await fetch(KNOWLEDGE_API);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
+            const payload = await res.json();
+            state.knowledgeItems = payload.items || [];
+            document.getElementById("kb-count").textContent = String(payload.size || 0);
+             document.getElementById("kb-json-path").textContent = `JSON：${payload.json_file || "-"}`;
+             document.getElementById("kb-render-path").textContent = `Markdown：${payload.render_file || "-"}`;
+             document.getElementById("kb-skill-path").textContent = `操作技能：${payload.skill_library_file || "-"}`;
+
+            if (selectId && getKnowledgeItemById(selectId)) {
+                state.activeKnowledgeId = selectId;
+            } else if (state.activeKnowledgeId && getKnowledgeItemById(state.activeKnowledgeId)) {
+                state.activeKnowledgeId = state.activeKnowledgeId;
+            } else if (state.knowledgeItems.length) {
+                state.activeKnowledgeId = state.knowledgeItems[0].id;
+            } else {
+                state.activeKnowledgeId = null;
+            }
+
+            const activeItem = state.activeKnowledgeId ? getKnowledgeItemById(state.activeKnowledgeId) : null;
+            fillKnowledgeEditor(activeItem);
+            renderKnowledgeList();
+        }
+
+        async function saveConfig() {
+            const button = document.getElementById("save-config-btn");
+            button.disabled = true;
+            button.textContent = "保存中...";
+
+            const payload = {
+                bot: {
+                    nickname: document.getElementById("bot-nickname").value.trim()
+                },
+                welcome: {
+                    enabled: document.getElementById("welcome-enabled").checked,
+                    enable_at: document.getElementById("welcome-at").checked,
+                    message_template: document.getElementById("welcome-template").value,
+                    notice_items: document.getElementById("welcome-notices").value
+                        .split("\n")
+                        .map((item) => item.trim())
+                        .filter(Boolean)
+                },
+                filter: {
+                    app_keywords: splitKeywords(document.getElementById("app-keywords").value),
+                    help_keywords: splitKeywords(document.getElementById("help-keywords").value),
+                    blocked_keywords: splitKeywords(document.getElementById("blocked-keywords").value),
+                    violation_reply_template: document.getElementById("violation-template").value
+                },
+                agent: {
+                    monitor_all_group_messages: document.getElementById("monitor-all-group-messages").checked,
+                    group_batch_size: Number(document.getElementById("group-batch-size").value) || 50,
+                    group_batch_wait_seconds: Number(document.getElementById("group-batch-wait-seconds").value) || 600
+                }
+            };
+
+            try {
+                const res = await fetch(CONFIG_API, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || `HTTP ${res.status}`);
+                }
+                showSavedChip();
+                showToast("配置已保存，机器人会继续使用新的内存配置。");
+            } catch (error) {
+                showToast(`保存配置失败：${error.message || error}`, true);
+            } finally {
+                button.disabled = false;
+                button.textContent = "保存配置并热更新";
+            }
+        }
+
+        async function saveKnowledgeItem() {
+            const button = document.getElementById("kb-save-btn");
+            button.disabled = true;
+            button.textContent = "保存中...";
+
+            try {
+                const payload = collectKnowledgePayload();
+                let res;
+                if (state.activeKnowledgeId) {
+                    res = await fetch(`${KNOWLEDGE_ITEMS_API}/${state.activeKnowledgeId}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    res = await fetch(KNOWLEDGE_ITEMS_API, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || `HTTP ${res.status}`);
+                }
+
+                const body = await res.json();
+                const savedId = body.item ? body.item.id : state.activeKnowledgeId;
+                await loadKnowledgeBase(savedId);
+                showSavedChip();
+                showToast("知识库已保存，下一条回复会直接使用新内容。");
+            } catch (error) {
+                showToast(`保存知识库失败：${error.message || error}`, true);
+            } finally {
+                button.disabled = false;
+                button.textContent = "保存条目并热更新";
+            }
+        }
+
+        async function deleteKnowledgeItem() {
+            if (!state.activeKnowledgeId) {
+                showToast("当前没有选中的条目。", true);
+                return;
+            }
+
+            const activeItem = getKnowledgeItemById(state.activeKnowledgeId);
+            const title = activeItem ? activeItem.title : `#${state.activeKnowledgeId}`;
+            if (!window.confirm(`确定删除条目“${title}”吗？`)) {
+                return;
+            }
+
+            const button = document.getElementById("kb-delete-btn");
+            button.disabled = true;
+            button.textContent = "删除中...";
+
+            try {
+                const res = await fetch(`${KNOWLEDGE_ITEMS_API}/${state.activeKnowledgeId}`, {
+                    method: "DELETE"
+                });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || `HTTP ${res.status}`);
+                }
+                state.activeKnowledgeId = null;
+                await loadKnowledgeBase();
+                showSavedChip();
+                showToast("条目已删除，知识库已热更新。");
+            } catch (error) {
+                showToast(`删除条目失败：${error.message || error}`, true);
+            } finally {
+                button.disabled = false;
+                button.textContent = "删除条目";
+            }
+        }
+
+        async function reloadKnowledgeBaseFromDisk() {
+            const button = document.getElementById("kb-reload-btn");
+            button.disabled = true;
+            button.textContent = "重载中...";
+
+            try {
+                const res = await fetch(KNOWLEDGE_RELOAD_API, { method: "POST" });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || `HTTP ${res.status}`);
+                }
+                await loadKnowledgeBase();
+                showSavedChip();
+                showToast("已从磁盘重新载入知识库。");
+            } catch (error) {
+                showToast(`重载知识库失败：${error.message || error}`, true);
+            } finally {
+                button.disabled = false;
+                button.textContent = "从磁盘重载";
+            }
+        }
+
+        async function boot() {
+            try {
+                await Promise.all([loadConfig(), loadKnowledgeBase(), loadCandidates()]);
+                document.getElementById("loading").classList.add("hidden");
+                document.getElementById("content").classList.remove("hidden");
+                connectAgentActivity();
+            } catch (error) {
+                showToast(`加载页面失败：${error.message || error}`, true);
+            }
+        }
+
+        document.addEventListener("input", (event) => {
+            if (event.target && ["bot-nickname", "welcome-template", "welcome-notices", "app-keywords", "help-keywords", "blocked-keywords"].includes(event.target.id)) {
+                fillPreview();
+            }
+        });
+
+        document.getElementById("save-config-btn").addEventListener("click", saveConfig);
+        document.getElementById("monitor-all-group-messages").addEventListener("change", syncGroupBatchControls);
+        document.getElementById("kb-save-btn").addEventListener("click", saveKnowledgeItem);
+        document.getElementById("kb-delete-btn").addEventListener("click", deleteKnowledgeItem);
+        document.getElementById("kb-reload-btn").addEventListener("click", reloadKnowledgeBaseFromDisk);
+        document.getElementById("kb-new-btn").addEventListener("click", resetKnowledgeEditor);
+        document.getElementById("kb-reset-btn").addEventListener("click", resetKnowledgeEditor);
+        document.getElementById("candidate-refresh-btn").addEventListener("click", () => {
+            loadCandidates().then(() => showToast("知识候选已刷新。")).catch((error) => {
+                showToast(`刷新候选失败：${error.message || error}`, true);
+            });
+        });
+        document.getElementById("agent-live-clear-btn").addEventListener("click", () => {
+            state.agentEventCount = 0;
+            renderAgentEmpty();
+        });
+        document.getElementById("agent-live-jump-btn").addEventListener("click", () => {
+            document.getElementById("agent-live-section").scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        window.addEventListener("beforeunload", () => {
+            if (state.agentEventSource) {
+                state.agentEventSource.close();
+                state.agentEventSource = null;
+            }
+        });
+
+        boot();
+    </script>
+</body>
+</html>

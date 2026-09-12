@@ -1,0 +1,29 @@
+# ---- 用户/私人配置（只提交 *.sample）----
+config.toml
+.mcp.json
+
+# ---- 运行数据与日志（含真实群聊记录，勿上传）----
+data/
+logs/
+*.log
+
+# ---- 三方 MCP 运行时依赖（见 README 重建步骤）----
+runtime/
+.uv-cache/
+.npm-cache/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.tmp_tests/
+
+# ---- Node ----
+node_modules/
+
+# ---- IDE / 系统 ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

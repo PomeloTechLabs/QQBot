@@ -1,0 +1,159 @@
+# VintagePomeloBot 配置样例
+# 复制为 config.toml 后按需修改；带 <...> 的字段必须填写。
+# 本文件可安全提交到公共仓库；真实的 config.toml 已在 .gitignore 中排除。
+
+# ==================== 机器人本体 ====================
+[bot]
+# 机器人自己的 QQ 号（NapCat 登录的账号）
+qq_id = "<bot_qq>"
+# 昵称：群内消息包含昵称时也会触发回复
+nickname = "小柚"
+
+# ==================== NapCat 连接 ====================
+[napcat]
+# NapCat WebSocket Server 地址（direct 模式，机器人作为 WS 客户端连接）
+host = "localhost"
+port = 5004
+# NapCat 配置的 access token，留空表示不鉴权
+access_token = "<napcat_access_token>"
+# 断线重连间隔（秒）
+reconnect_interval = 5
+
+# ==================== DeepSeek 云端模型（可选） ====================
+# 不填写 api_key 时走 [ollama] 本地模型
+[deepseek]
+api_key = ""
+base_url = "https://api.deepseek.com"
+model = "deepseek-chat"
+timeout = 60
+thinking_mode = "disabled"
+reply_temperature = 0.3
+json_temperature = 0.0
+
+# ==================== 消息过滤 ====================
+[filter]
+# 与产品相关的关键词（用于识别是否为产品话题）
+app_keywords = ["小柚"]
+# 求助/咨询类关键词
+help_keywords = ["怎么", "如何", "为什么", "帮助", "问题", "bug", "错误", "崩了", "失败", "不行", "闪退", "登录", "注册", "功能", "使用", "教程", "?"]
+# 违禁词：命中后直接回复 violation_reply_template，不调用模型
+blocked_keywords = ["色情", "赌博", "毒品", "暴恐", "反动"]
+violation_reply_template = "您好，为了群能健康的发展，请勿讨论违规内容，谢谢您的支持和配合！"
+# true = app_keywords + help_keywords 同时命中才触发；false = 命中 app_keywords 即触发
+strict_mode = true
+
+# ==================== 上下文缓存 ====================
+[cache]
+# 每个 (group_id, user_id) 保留最近 N 条消息
+window_size = 3
+ttl_seconds = 300
+
+# ==================== 长期会话记忆 ====================
+[memory]
+enabled = true
+directory = "data/conversation_memories"
+recent_turn_limit = 10
+retain_after_compaction = 7
+summary_max_chars = 1200
+max_turn_chars = 2000
+
+# ==================== 管理员 ====================
+[admin]
+# 管理员 QQ 号列表（纯数字）
+admin_qq_list = []
+command_prefix = "/bot"
+
+# ==================== 群黑白名单 ====================
+[groups]
+# whitelist = 只处理列表中的群；blacklist = 屏蔽列表中的群
+mode = "blacklist"
+group_list = []
+
+# ==================== 入群欢迎 ====================
+[welcome]
+enabled = true
+enable_at = true
+# 可用占位符 {bot_nickname}
+message_template = "欢迎加入本群，我是{bot_nickname}。如果你有问题，可以直接@我描述。"
+notice_items = []
+
+# ==================== 用户反馈收集 ====================
+[feedback]
+enabled = true
+data_file = "data/feedback.json"
+md_file = "data/feedback.md"
+query_keywords = ["查待办", "待办事项", "查反馈", "反馈列表"]
+clarify_timeout = 120
+archive_media = true
+media_directory = "data/feedback_media"
+max_image_bytes = 15000000
+max_video_bytes = 100000000
+
+# ==================== 反馈自动建 GitHub Issue ====================
+[github_issues]
+enabled = false
+# 目标仓库，如 "your-org/your-repo"
+repository = "<owner>/<repo>"
+# fine-grained PAT，需要目标仓库 Issues: write 权限；
+# 建议留空并使用环境变量 GITHUB_TOKEN，避免明文落盘
+token = ""
+token_env = "GITHUB_TOKEN"
+submit_feature_requests = true
+include_reporter_name = true
+include_media_links = true
+api_base_url = "https://api.github.com"
+timeout = 20
+
+# ==================== 本地知识库 ====================
+[knowledge_base]
+json_file = "data/knowledge_base.json"
+render_file = "data/knowledge_base.md"
+history_turns = 6
+uncertain_to_kb = true
+
+# ==================== Ollama 本地模型 ====================
+[ollama]
+base_url = "http://127.0.0.1:11434"
+# 模型标签，如 qwen3:32b、llama3.1:8b 等
+model = "qwen3:32b"
+context_length = 32768
+timeout = 180
+think = true
+reply_temperature = 0.25
+json_temperature = 0.0
+
+# ==================== Copilot CLI 支持 Agent ====================
+# 把技术支持、网页核验和开源仓库研究交给 GitHub Copilot CLI
+# （Copilot CLI 通过 Ollama 的 OpenAI 兼容接口调用本地模型）
+[agent]
+enabled = true
+runtime = "copilot"
+# Copilot 可执行文件路径；npm 全局安装后按实际路径修改
+executable = "copilot"
+# Agent 配置文件名（对应 .github/agents/<profile>.agent.md）
+profile = "jiuyou-support"
+command_timeout = 300
+# true = 对全部群消息做批量分流（更省显卡，但有延迟）；false = 只响应触发条件
+monitor_all_group_messages = false
+group_batch_size = 50
+group_batch_wait_seconds = 300
+reasoning_effort = "high"
+triage_reasoning_effort = "minimal"
+intent_threshold = 0.72
+max_tool_turns = 4
+web_search_enabled = true
+github_study_enabled = true
+# true = 允许访问所有公开 HTTPS 页面；false = 仅允许 web_allow_urls 白名单
+allow_all_web_urls = true
+web_allow_urls = ["https://www.bing.com", "https://github.com"]
+web_timeout = 15
+max_search_results = 5
+group_learning_enabled = true
+agent_answer_learning_enabled = true
+agent_answer_learning_min_confidence = 0.9
+candidate_file = "data/knowledge_candidates.json"
+skill_library_file = "data/operational_skills.md"
+# 群友解答是否自动入库；false = 管理员审批后发布
+auto_publish_learning = false
+learning_min_confidence = 0.9
+learning_question_ttl = 900

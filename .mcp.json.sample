@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "public-web": {
+      "type": "local",
+      "command": "python",
+      "args": ["-m", "src.public_web_mcp"],
+      "env": {
+        "PYTHONIOENCODING": "utf-8"
+      },
+      "tools": ["fetch_public_url"]
+    },
+    "web-search": {
+      "type": "local",
+      "command": "node",
+      "args": ["runtime/mcp_web_search/node_modules/@zhafron/mcp-web-search/dist/src/server.js"],
+      "env": {
+        "DEFAULT_SEARCH_PROVIDER": "duckduckgo",
+        "HTTP_TIMEOUT": "15000"
+      },
+      "tools": ["search_web"]
+    }
+  }
+}
