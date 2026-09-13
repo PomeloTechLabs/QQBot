@@ -34,6 +34,9 @@ _ANALYSIS_PROMPT_TEMPLATE = """\
 [GAME_COMPAT_ANALYSIS_REQUEST]
 请判断下面这条消息是否报告了某个游戏在手机/模拟器上的运行情况（能玩或不能玩都算），值得收录到游戏兼容性库。
 
+=== 触发方式 ===
+{trigger_context}
+
 === 当前消息 ===
 用户 {user_id}: {text}
 
@@ -47,6 +50,7 @@ _ANALYSIS_PROMPT_TEMPLATE = """\
 仅输出 JSON：
 {{
   "is_game_compatibility": true/false,
+  "jiuyou_related": true/false,
   "status": "works" | "issues" | "unknown",
   "game": "游戏名；未提供则留空",
   "game_version": "游戏版本号；未提供则留空",
@@ -62,6 +66,9 @@ _ANALYSIS_PROMPT_TEMPLATE = """\
 
 收录标准：
 - is_game_compatibility=true：消息在描述某款游戏实际跑起来的体验，正面（能玩、流畅、完美运行）和负面（玩不了、闪退、黑屏、进不去、报错、严重掉帧、贴图异常）都要收录
+- jiuyou_related=true：消息或最近上下文明确与旧柚系列有关——提到旧柚、小柚、旧柚闪传、旧柚Pro，或在讨论通过旧柚跑这款游戏
+- 普通群聊（未@机器人）时：只有 jiuyou_related=true 才允许 is_game_compatibility=true；讨论其他模拟器、其他工具或单纯聊游戏，一律 is_game_compatibility=false
+- 用户@了机器人或私聊时：用户是在主动找机器人，描述游戏运行体验即可收录，不强制 jiuyou_related
 - status=works：最终能正常玩；先出问题后来解决了也算 works，摘要里注明
 - status=issues：最终玩不了或问题仍在
 - status=unknown：报告了兼容性话题但无法判断最终结果
@@ -95,6 +102,7 @@ _EMULATOR_TYPE_HINTS = {
 @dataclass
 class _AnalysisResult:
     is_game_compatibility: bool = False
+    jiuyou_related: bool = False
     status: CompatStatus = "unknown"
     game: str = ""
     game_version: str = ""
@@ -169,7 +177,10 @@ class CompatibilityCollector:
         group_context: list[dict[str, str]],
         media: list[dict[str, str]],
         reporter_name: str,
+        *,
+        directed: bool = False,
     ) -> None:
+        """directed=True 表示用户@了机器人/昵称点名或私聊，此时才允许追问。"""
         scope_id = group_id or f"private:{user_id}"
         key = (scope_id, user_id)
         now = time.monotonic()
@@ -178,33 +189,56 @@ class CompatibilityCollector:
             return
         self._last_analysis[key] = now
 
-        result = await self._analyze(text=text, user_id=user_id, group_context=group_context, media=media)
+        result = await self._analyze(
+            text=text,
+            user_id=user_id,
+            group_context=group_context,
+            media=media,
+            directed=directed,
+        )
         if not result.is_game_compatibility:
+            return
+        # 未@机器人的普通群聊：只有明确与旧柚相关才记录，绝不打扰
+        if not directed and not result.jiuyou_related:
+            logger.info(
+                "兼容性话题与旧柚无关，保持沉默 group=%s user=%s reason=%s",
+                group_id or "-",
+                user_id,
+                result.reason[:80],
+            )
             return
 
         report_fields = self._build_report_fields(result, text)
         needs_clarify = (not report_fields["game"]) or report_fields["status"] == "unknown"
-        if needs_clarify and self._sender is not None:
-            question = self._clarify_question(report_fields)
-            await self._create_pending(
-                key=key,
-                question=question,
-                source_text=text,
-                group_context=group_context,
-                media=media,
-                reporter_name=reporter_name,
-                group_id=group_id,
-                fields=report_fields,
-            )
-            await self._sender(event, question)
-            logger.info(
-                "兼容性收录需要追问 group=%s user=%s game=%r status=%s",
-                group_id or "-",
-                user_id,
-                report_fields["game"],
-                report_fields["status"],
-            )
-            return
+        if needs_clarify:
+            if directed and self._sender is not None:
+                question = self._clarify_question(report_fields)
+                await self._create_pending(
+                    key=key,
+                    question=question,
+                    source_text=text,
+                    group_context=group_context,
+                    media=media,
+                    reporter_name=reporter_name,
+                    group_id=group_id,
+                    fields=report_fields,
+                )
+                await self._sender(event, question)
+                logger.info(
+                    "兼容性收录需要追问 group=%s user=%s game=%r status=%s",
+                    group_id or "-",
+                    user_id,
+                    report_fields["game"],
+                    report_fields["status"],
+                )
+                return
+            if not report_fields["game"]:
+                # 不允许追问且缺游戏名：无法形成有效报告，保持沉默
+                logger.info(
+                    "兼容性报告缺少游戏名且未@机器人，跳过 user=%s", user_id
+                )
+                return
+            # 游戏已知但结果不确定：静默按 unknown 记录，不打扰
 
         await self._finalize_report(
             group_id=group_id,
@@ -442,6 +476,7 @@ class CompatibilityCollector:
         user_id: str,
         group_context: list[dict[str, str]],
         media: list[dict[str, str]],
+        directed: bool = False,
     ) -> _AnalysisResult:
         context_lines = "（无上下文）"
         if group_context:
@@ -453,7 +488,13 @@ class CompatibilityCollector:
             if lines:
                 context_lines = "\n".join(lines)
 
+        trigger_context = (
+            "用户@了机器人或私聊机器人，属于主动咨询"
+            if directed
+            else "普通群聊，用户没有@机器人"
+        )
         prompt = _ANALYSIS_PROMPT_TEMPLATE.format(
+            trigger_context=trigger_context,
             user_id=user_id,
             text=text[:600],
             context_lines=context_lines,
@@ -505,6 +546,7 @@ class CompatibilityCollector:
         summary = _field("summary") or fallback_text.strip()[:100]
         return _AnalysisResult(
             is_game_compatibility=bool(data.get("is_game_compatibility", False)),
+            jiuyou_related=bool(data.get("jiuyou_related", False)),
             status=status,  # type: ignore[arg-type]
             game=_field("game", 80),
             game_version=_field("game_version", 80),

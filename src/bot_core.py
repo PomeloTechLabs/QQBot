@@ -310,7 +310,16 @@ class BotCore:
                     reporter_name,
                 )
             )
-        if self._compat and text and self._compat.should_observe(text):
+        if (
+            self._compat
+            and text
+            and self._is_group_allowed(group_id)
+            and self._compat.should_observe(text)
+        ):
+            directed = message_type == "private" or reason in {
+                "at_mention",
+                "nickname_mention",
+            }
             asyncio.create_task(
                 self._run_compatibility_analysis(
                     event,
@@ -320,6 +329,7 @@ class BotCore:
                     group_ctx,
                     media,
                     reporter_name,
+                    directed=directed,
                 )
             )
         if (
@@ -719,6 +729,8 @@ class BotCore:
         group_ctx: list[dict[str, str]],
         media: list[dict[str, str]],
         reporter_name: str,
+        *,
+        directed: bool = False,
     ) -> None:
         if not self._compat:
             return
@@ -731,6 +743,7 @@ class BotCore:
                 group_ctx,
                 media=media,
                 reporter_name=reporter_name,
+                directed=directed,
             )
         except Exception:
             logger.exception("兼容性收集后台任务异常")

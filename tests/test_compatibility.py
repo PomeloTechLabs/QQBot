@@ -23,6 +23,7 @@ from src.config import CompatibilityConfig
 def _json_response(**overrides) -> str:
     data = {
         "is_game_compatibility": True,
+        "jiuyou_related": True,
         "status": "works",
         "game": "赛博酒保",
         "game_version": "",
@@ -187,6 +188,7 @@ class CompatibilityCollectorTests(unittest.IsolatedAsyncioTestCase):
             _EVENT, "1000", "2000",
             "那个调酒的游戏我玩了一下午，很流畅",
             group_context=[], media=[], reporter_name="测试群友",
+            directed=True,
         )
 
         self.assertEqual(store.size, 0)
@@ -208,6 +210,78 @@ class CompatibilityCollectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(archiver.calls), 0)
         self.assertFalse(collector.has_pending_clarification("1000", "2000"))
 
+    async def test_undirected_non_jiuyou_stays_silent(self) -> None:
+        collector, store, llm, archiver, publisher, sender = self._make(
+            [_json_response(jiuyou_related=False, status="issues")]
+        )
+        await collector.observe(
+            _EVENT, "1000", "2000",
+            "赛博酒保这游戏在我手机上闪退",
+            group_context=[], media=[], reporter_name="路人",
+            directed=False,
+        )
+        self.assertEqual(store.size, 0)
+        self.assertEqual(publisher.reports, [])
+        self.assertEqual(sender.messages, [])
+
+    async def test_undirected_complete_jiuyou_report_records_silently(self) -> None:
+        collector, store, llm, archiver, publisher, sender = self._make(
+            [_json_response(status="issues", emulator="旧柚")]
+        )
+        await collector.observe(
+            _EVENT, "1000", "2000",
+            "旧柚里赛博酒保又闪退了",
+            group_context=[], media=[], reporter_name="群友",
+            directed=False,
+        )
+        self.assertEqual(store.size, 1)
+        self.assertEqual(len(publisher.reports), 1)
+        self.assertEqual(sender.messages, [])
+        self.assertEqual(store.get_report(1).status, "issues")
+
+    async def test_undirected_missing_game_never_asks(self) -> None:
+        collector, store, llm, archiver, publisher, sender = self._make(
+            [_json_response(game="", status="works")]
+        )
+        await collector.observe(
+            _EVENT, "1000", "2000", "旧柚里那个调酒游戏很流畅",
+            group_context=[], media=[], reporter_name="",
+            directed=False,
+        )
+        self.assertEqual(sender.messages, [])
+        self.assertEqual(store.size, 0)
+        self.assertFalse(collector.has_pending_clarification("1000", "2000"))
+
+    async def test_undirected_unknown_status_records_without_asking(self) -> None:
+        collector, store, llm, archiver, publisher, sender = self._make(
+            [_json_response(status="unknown")]
+        )
+        await collector.observe(
+            _EVENT, "1000", "2000", "旧柚跑赛博酒保好像有点问题",
+            group_context=[], media=[], reporter_name="",
+            directed=False,
+        )
+        self.assertEqual(sender.messages, [])
+        self.assertEqual(store.size, 1)
+        self.assertEqual(store.get_report(1).status, "unknown")
+
+    async def test_directed_report_asks_even_without_jiuyou(self) -> None:
+        collector, store, llm, archiver, publisher, sender = self._make(
+            [
+                _json_response(jiuyou_related=False, game="", status="works"),
+                _json_response(game="赛博酒保", status="works"),
+            ]
+        )
+        await collector.observe(
+            _EVENT, "1000", "2000", "@小柚 这个游戏很流畅",
+            group_context=[], media=[], reporter_name="",
+            directed=True,
+        )
+        self.assertEqual(len(sender.messages), 1)
+        confirmation = await collector.consume_clarification("1000", "2000", "赛博酒保")
+        self.assertIn("已收录", confirmation)
+        self.assertEqual(store.size, 1)
+
     async def test_clarify_decline_skips_report(self) -> None:
         collector, store, llm, archiver, publisher, sender = self._make(
             [_json_response(game="", status="works")]
@@ -215,6 +289,7 @@ class CompatibilityCollectorTests(unittest.IsolatedAsyncioTestCase):
         await collector.observe(
             _EVENT, "1000", "2000", "这游戏跑得很流畅",
             group_context=[], media=[], reporter_name="",
+            directed=True,
         )
         confirmation = await collector.consume_clarification("1000", "2000", "不用了")
 
@@ -231,6 +306,7 @@ class CompatibilityCollectorTests(unittest.IsolatedAsyncioTestCase):
         await collector.observe(
             _EVENT, "1000", "2000", "手机上玩进不去黑屏",
             group_context=[], media=[], reporter_name="超时群友",
+            directed=True,
         )
         self.assertEqual(store.size, 0)
         await asyncio.sleep(1.3)
