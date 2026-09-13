@@ -24,6 +24,7 @@ _ROOT_COMMANDS = {
     "record",
     "kb",
     "learn",
+    "compat",
 }
 
 _KB_JSON_PROMPT = """请把管理员给出的知识整理成精简、稳定、可复用的知识库条目，并输出 JSON。
@@ -150,6 +151,8 @@ class AdminHandler:
             return await self._handle_kb(args, event)
         if cmd == "learn":
             return self._handle_learning(args, event)
+        if cmd == "compat":
+            return self._handle_compat(args)
         return f"未知命令: {cmd!r}\n{self._help()}"
 
     def _help(self) -> str:
@@ -172,12 +175,26 @@ class AdminHandler:
             f"  {prefix} kb add <内容>\n"
             f"  {prefix} kb update #id <修订内容>\n"
             f"  {prefix} kb delete #id\n"
-            f"  {prefix} learn [list|all|show #id|approve #id|reject #id]"
+            f"  {prefix} learn [list|all|show #id|approve #id|reject #id]\n"
+            f"  {prefix} compat [list|show #id]"
         )
+
+    def _handle_compat(self, args: list[str]) -> str:
+        compat = self._core._compat
+        if not compat:
+            return "兼容性收集未启用，请在 config.toml 里设置 compatibility.enabled = true"
+
+        if args and args[0].lower() == "show" and len(args) >= 2:
+            match = re.fullmatch(r"#?(\d+)", args[1])
+            if not match:
+                return "用法: /bot compat show #id"
+            return compat.format_report_detail(int(match.group(1)))
+        return compat.format_recent()
 
     def _status(self) -> str:
         cfg = self._core.config
         feedback_store = self._core._feedback.store if self._core._feedback else None
+        compat_store = self._core._compat._store if self._core._compat else None
         return (
             "小柚状态：\n"
             f"  NapCat 连接: {'已连接' if self._core.napcat.is_connected else '未连接'}\n"
@@ -188,6 +205,7 @@ class AdminHandler:
             f"  知识库条目: {self._core.knowledge_store.size}\n"
             f"  待审核群聊知识: {self._core.knowledge_candidates.pending_size}\n"
             f"  反馈记录: {feedback_store.size if feedback_store else '未启用'}\n"
+            f"  兼容性报告: {compat_store.size if compat_store else '未启用'}\n"
             f"  过滤模式: {'严格(app+help)' if cfg.filter.strict_mode else '宽松(仅app)'}\n"
             f"  管理员: {', '.join(cfg.admin.admin_qq_list) or '(未设置)'}"
         )

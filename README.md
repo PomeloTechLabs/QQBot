@@ -10,6 +10,7 @@
 
 - **智能触发回复**：@机器人 / 昵称 / 产品求助关键词（strict 模式可要求求助词组合命中）
 - **知识库优先路由**：回复前先由轻量模型判断意图，命中知识库的走知识库，闲聊走模型直答
+- **游戏兼容性自动收录**：识别群友报告的游戏运行情况（能玩/不能玩都收），自动补全缺失信息后在兼容性仓库创建 Issue；图片证据随 Issue 收录，保留报告者群昵称方便追溯
 - **Copilot CLI 支持 Agent**：把技术支持、网页搜索核验、开源仓库研究交给 [GitHub Copilot CLI](https://github.com/github/copilot-cli)，底层仍调用本机 Ollama 模型
 - **受限的联网能力**：仅开放两个 MCP 工具（DuckDuckGo 搜索 + 公开网页抓取），拒绝 localhost/内网地址，禁止 shell 与文件写入
 - **本地知识库 + 群聊学习**：群友的优质解答可被整理为知识候选，管理员审批后入库（`/bot learn approve`）
@@ -168,6 +169,7 @@ python bot.py --config config.toml --debug
 | `[filter]` | 触发关键词、违禁词、strict 模式 |
 | `[memory]` | 长期会话记忆 |
 | `[feedback]` / `[github_issues]` | 反馈收集与自动建 Issue |
+| `[compatibility]` | 游戏兼容性自动收录（目标仓库、追问超时、默认值） |
 | `[welcome]` | 入群欢迎语与公告 |
 | `[admin]` / `[groups]` | 管理员、群黑白名单 |
 
@@ -185,7 +187,25 @@ python bot.py --config config.toml --debug
 /bot kb add|show|update|del   知识库管理
 /bot learn list|show|approve|reject   知识候选审核
 /bot feedback records|show    反馈记录查询
+/bot compat list|show #id     兼容性报告查询
 ```
+
+## 游戏兼容性自动收录
+
+群友在聊天中报告的游戏运行情况（无论是"能玩"还是"玩不了"）都会被自动整理成 Issue 发布到 `[compatibility].repository`（如 `yifengling0/VintagePomeloPro-Compatibility`），作为公开的兼容性数据库。
+
+**工作流程**：
+
+1. **触发**：消息命中兼容性关键词（能跑/流畅/闪退/黑屏/模拟器名等，正负面都覆盖）后，由本地模型做一次轻量 JSON 分析确认是否为真实的运行体验报告
+2. **自动补全（不打扰用户）**：
+   - 小柚 App 版本：未提供 → 默认"最新版"
+   - 游戏版本：未提供 → 记"不明"
+   - 模拟器/运行方式：按游戏类型推断（PC 游戏 → Winlator/Hokit，手游 → Android 原生），消息里直接提到的模拟器名优先
+   - 设备/系统/驱动：能提取就填，不能就留空
+3. **追问（仅在必要时）**：只有"不知道是哪个游戏"或"无法判断最终能否运行"时，才向报告者追问一次；回复"不用了"即跳过；超时（`clarify_timeout`，默认 120 秒）按已有信息直接收录
+4. **发布**：信息完整时静默收录（不刷屏）；Issue 包含游戏信息、运行环境、报告者群昵称与群组、脱敏原文和图片证据（QQ CDN 链接 + 本地归档于 `data/compatibility_media`）
+
+管理员可用 `/bot compat` 查看最近收录的报告，`/bot compat show #id` 查看详情。GitHub 令牌优先级：`compatibility.token` → 环境变量 `GITHUB_TOKEN` → `github_issues.token`。
 
 ## 测试
 

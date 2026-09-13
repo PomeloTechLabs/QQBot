@@ -104,6 +104,36 @@ include_media_links = true
 api_base_url = "https://api.github.com"
 timeout = 20
 
+# ==================== 游戏兼容性自动收录 ====================
+# 识别群友聊天里的游戏运行情况（能玩/不能玩都收），自动补全缺失信息后
+# 在目标仓库创建 Issue；仅在"不知道是哪个游戏"或"无法判断最终能否运行"
+# 时向报告者追问一次，超时按已有信息收录。
+[compatibility]
+enabled = true
+# 兼容性 Issue 的目标仓库
+repository = "<owner>/<repo>-Compatibility"
+# 留空则依次回退：环境变量 GITHUB_TOKEN -> github_issues.token
+token = ""
+token_env = "GITHUB_TOKEN"
+data_file = "data/compatibility_reports.json"
+md_file = "data/compatibility_reports.md"
+archive_media = true
+media_directory = "data/compatibility_media"
+max_image_bytes = 15000000
+max_video_bytes = 100000000
+# 追问等待秒数；超时按已有信息直接收录
+clarify_timeout = 120
+# 同一用户两次兼容性分析的最小间隔（秒）
+analysis_cooldown = 30
+# App 版本未提供时的默认值
+default_app_version = "最新版"
+# 游戏版本未提供时记录的占位值
+unknown_game_version = "不明"
+include_reporter_name = true
+include_media_links = true
+api_base_url = "https://api.github.com"
+timeout = 20
+
 # ==================== 本地知识库 ====================
 [knowledge_base]
 json_file = "data/knowledge_base.json"

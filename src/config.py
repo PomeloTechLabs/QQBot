@@ -181,6 +181,36 @@ class GitHubIssuesConfig:
 
 
 @dataclass
+class CompatibilityConfig:
+    """游戏兼容性自动收录设置：把群友报告的游戏运行情况整理成 Issue。
+
+    缺失信息按默认值补全（App 版本默认最新版、游戏版本默认不明、
+    模拟器按游戏类型推断），仅在无法判断时向报告者追问一次。
+    """
+
+    enabled: bool = True
+    repository: str = "yifengling0/VintagePomeloPro-Compatibility"
+    token: str = field(default="", repr=False)
+    token_env: str = "GITHUB_TOKEN"
+    data_file: str = "data/compatibility_reports.json"
+    md_file: str = "data/compatibility_reports.md"
+    archive_media: bool = True
+    media_directory: str = "data/compatibility_media"
+    max_image_bytes: int = 15_000_000
+    max_video_bytes: int = 100_000_000
+    # 向报告者追问的等待时间（秒）；超时按已补全的信息直接收录
+    clarify_timeout: int = 120
+    # 同一用户两次兼容性分析的最小间隔（秒），避免频繁消耗 GPU 推理
+    analysis_cooldown: int = 30
+    default_app_version: str = "最新版"
+    unknown_game_version: str = "不明"
+    include_reporter_name: bool = True
+    include_media_links: bool = True
+    api_base_url: str = "https://api.github.com"
+    timeout: int = 20
+
+
+@dataclass
 class KnowledgeBaseConfig:
     json_file: str = "data/knowledge_base.json"
     render_file: str = "data/knowledge_base.md"
@@ -201,6 +231,7 @@ class AppConfig:
     memory: MemoryConfig = field(default_factory=MemoryConfig)
     feedback: FeedbackConfig = field(default_factory=FeedbackConfig)
     github_issues: GitHubIssuesConfig = field(default_factory=GitHubIssuesConfig)
+    compatibility: CompatibilityConfig = field(default_factory=CompatibilityConfig)
     knowledge_base: KnowledgeBaseConfig = field(default_factory=KnowledgeBaseConfig)
     ollama: OllamaConfig = field(default_factory=OllamaConfig)
     agent: AgentConfig = field(default_factory=AgentConfig)
@@ -289,6 +320,26 @@ class AppConfig:
                 "api_base_url": self.github_issues.api_base_url,
                 "timeout": self.github_issues.timeout,
             },
+            "compatibility": {
+                "enabled": self.compatibility.enabled,
+                "repository": self.compatibility.repository,
+                "token": self.compatibility.token,
+                "token_env": self.compatibility.token_env,
+                "data_file": self.compatibility.data_file,
+                "md_file": self.compatibility.md_file,
+                "archive_media": self.compatibility.archive_media,
+                "media_directory": self.compatibility.media_directory,
+                "max_image_bytes": self.compatibility.max_image_bytes,
+                "max_video_bytes": self.compatibility.max_video_bytes,
+                "clarify_timeout": self.compatibility.clarify_timeout,
+                "analysis_cooldown": self.compatibility.analysis_cooldown,
+                "default_app_version": self.compatibility.default_app_version,
+                "unknown_game_version": self.compatibility.unknown_game_version,
+                "include_reporter_name": self.compatibility.include_reporter_name,
+                "include_media_links": self.compatibility.include_media_links,
+                "api_base_url": self.compatibility.api_base_url,
+                "timeout": self.compatibility.timeout,
+            },
             "knowledge_base": {
                 "json_file": self.knowledge_base.json_file,
                 "render_file": self.knowledge_base.render_file,
@@ -362,6 +413,7 @@ def load_config(path: str | Path = "config.toml") -> AppConfig:
     feedback_raw = raw.get("feedback", {})
     kb_raw = raw.get("knowledge_base", {})
     github_issues_raw = raw.get("github_issues", {})
+    compatibility_raw = raw.get("compatibility", {})
     ollama_raw = raw.get("ollama", {})
     agent_raw = raw.get("agent", {})
 
@@ -458,6 +510,55 @@ def load_config(path: str | Path = "config.toml") -> AppConfig:
                 github_issues_raw.get("api_base_url", "https://api.github.com")
             ).rstrip("/"),
             timeout=max(5, int(github_issues_raw.get("timeout", 20))),
+        ),
+        compatibility=CompatibilityConfig(
+            enabled=bool(compatibility_raw.get("enabled", True)),
+            repository=str(
+                compatibility_raw.get(
+                    "repository", "yifengling0/VintagePomeloPro-Compatibility"
+                )
+            ).strip(),
+            token=str(compatibility_raw.get("token", "")).strip(),
+            token_env=str(compatibility_raw.get("token_env", "GITHUB_TOKEN")).strip()
+            or "GITHUB_TOKEN",
+            data_file=str(
+                compatibility_raw.get("data_file", "data/compatibility_reports.json")
+            ),
+            md_file=str(
+                compatibility_raw.get("md_file", "data/compatibility_reports.md")
+            ),
+            archive_media=bool(compatibility_raw.get("archive_media", True)),
+            media_directory=str(
+                compatibility_raw.get("media_directory", "data/compatibility_media")
+            ),
+            max_image_bytes=max(
+                100_000, int(compatibility_raw.get("max_image_bytes", 15_000_000))
+            ),
+            max_video_bytes=max(
+                1_000_000, int(compatibility_raw.get("max_video_bytes", 100_000_000))
+            ),
+            clarify_timeout=max(
+                30, int(compatibility_raw.get("clarify_timeout", 120))
+            ),
+            analysis_cooldown=max(
+                0, int(compatibility_raw.get("analysis_cooldown", 30))
+            ),
+            default_app_version=str(
+                compatibility_raw.get("default_app_version", "最新版")
+            ),
+            unknown_game_version=str(
+                compatibility_raw.get("unknown_game_version", "不明")
+            ),
+            include_reporter_name=bool(
+                compatibility_raw.get("include_reporter_name", True)
+            ),
+            include_media_links=bool(
+                compatibility_raw.get("include_media_links", True)
+            ),
+            api_base_url=str(
+                compatibility_raw.get("api_base_url", "https://api.github.com")
+            ).rstrip("/"),
+            timeout=max(5, int(compatibility_raw.get("timeout", 20))),
         ),
         knowledge_base=KnowledgeBaseConfig(
             json_file=str(kb_raw.get("json_file", "data/knowledge_base.json")),

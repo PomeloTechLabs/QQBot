@@ -8,6 +8,9 @@ from pathlib import Path
 
 from .admin_handler import AdminHandler
 from .agent_activity import AgentActivityStream
+from .compatibility_collector import CompatibilityCollector
+from .compatibility_publisher import CompatibilityIssuePublisher
+from .compatibility_store import CompatibilityStore
 from .config import AppConfig
 from .copilot_agent import CopilotAgent
 from .conversation_memory import ConversationMemoryStore
@@ -146,6 +149,34 @@ class BotCore:
         else:
             self._feedback = None
 
+        self._compat: CompatibilityCollector | None = None
+        if config.compatibility.enabled:
+            compat_store = CompatibilityStore(
+                json_path=config.compatibility.data_file,
+                md_path=config.compatibility.md_file,
+            )
+            compat_archiver = (
+                FeedbackMediaArchiver(
+                    directory=config.compatibility.media_directory,
+                    workspace_root=Path(__file__).resolve().parents[1],
+                    max_image_bytes=config.compatibility.max_image_bytes,
+                    max_video_bytes=config.compatibility.max_video_bytes,
+                )
+                if config.compatibility.archive_media
+                else None
+            )
+            self._compat = CompatibilityCollector(
+                store=compat_store,
+                llm=self.llm,
+                config=config.compatibility,
+                media_archiver=compat_archiver,
+                issue_publisher=CompatibilityIssuePublisher(
+                    config.compatibility,
+                    fallback_token=config.github_issues.token,
+                ),
+                sender=self._send_reply,
+            )
+
     async def run(self) -> None:
         logger.info("VintagePomeloBot 启动中...")
         cleanup_task = asyncio.create_task(self._periodic_cleanup())
@@ -217,6 +248,27 @@ class BotCore:
                     )
                 )
 
+        # 兼容性追问的应答优先于其他处理：机器人刚向该用户提问，
+        # 其下一条消息（含纯图片）视为补充说明，不再走常规回复流程。
+        if (
+            self._compat
+            and self._compat.has_pending_clarification(scope_id, user_id)
+        ):
+            await self._remember_user_turn(
+                scope_id, user_id, text or "[用户发送附件，未提供文字]"
+            )
+            confirmation = await self._compat.consume_clarification(
+                scope_id,
+                user_id,
+                text,
+                media=media,
+                reporter_name=reporter_name,
+            )
+            if confirmation:
+                await self._send_reply(event, confirmation)
+                await self._remember_assistant_turn(scope_id, user_id, confirmation)
+            return
+
         if message_type == "group" and self._feedback and text:
             feedback_query = self._feedback.detect_query(text)
             if feedback_query:
@@ -241,14 +293,26 @@ class BotCore:
                 return
 
         should_reply, reason = self._filter.should_reply(event, segments, text)
+        group_ctx = self.cache.get_group_history(group_id) if group_id else []
         if self._feedback and self._feedback.should_analyze(
             text,
             media,
             is_private=message_type == "private",
         ):
-            group_ctx = self.cache.get_group_history(group_id) if group_id else []
             asyncio.create_task(
                 self._run_feedback_analysis(
+                    event,
+                    group_id,
+                    user_id,
+                    text,
+                    group_ctx,
+                    media,
+                    reporter_name,
+                )
+            )
+        if self._compat and text and self._compat.should_observe(text):
+            asyncio.create_task(
+                self._run_compatibility_analysis(
                     event,
                     group_id,
                     user_id,
@@ -645,6 +709,31 @@ class BotCore:
             )
         except Exception:
             logger.exception("反馈分析后台任务异常")
+
+    async def _run_compatibility_analysis(
+        self,
+        event: dict,
+        group_id: str,
+        user_id: str,
+        text: str,
+        group_ctx: list[dict[str, str]],
+        media: list[dict[str, str]],
+        reporter_name: str,
+    ) -> None:
+        if not self._compat:
+            return
+        try:
+            await self._compat.observe(
+                event,
+                group_id,
+                user_id,
+                text,
+                group_ctx,
+                media=media,
+                reporter_name=reporter_name,
+            )
+        except Exception:
+            logger.exception("兼容性收集后台任务异常")
 
     @staticmethod
     def _reporter_name(event: dict) -> str:

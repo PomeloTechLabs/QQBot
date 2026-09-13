@@ -54,9 +54,14 @@ python bot.py
 
 使用 `/bot status` 应看到 `支持 Agent: Copilot CLI / qwen3.8:latest`。本机已将 `agent.executable` 固定为 Copilot 原生 Windows 二进制，绕过 npm 启动器缺失平台包的问题；其他机器请按实际安装路径修改。
 
+## 游戏兼容性自动收录
+
+群友聊天里报告的游戏运行情况（能玩与玩不了都收）会自动整理成 Issue 发布到 `config.toml` `[compatibility].repository` 指定的兼容性仓库。缺失信息自动补全：App 版本默认最新版、游戏版本记"不明"、模拟器按游戏类型推断；只有缺游戏名或无法判断最终结果时才向报告者追问一次，超时按已有信息收录。图片经 QQ CDN 链接随 Issue 附上并在 `data/compatibility_media` 本地归档，报告者群昵称保留在 Issue 中方便追溯。管理员用 `/bot compat` 查看收录结果。
+
 ## 运营建议
 
 - 在本机 `config.toml` 的 `[github_issues]` 段填写具备目标仓库 `Issues: write` 权限的 fine-grained token：`token = "..."`，然后重启机器人。令牌不会通过网页接口或日志输出；令牌缺失、仓库不可访问或创建失败时，bug 仍会完整保存在本地反馈记录中，并显示失败原因。环境变量 `GITHUB_TOKEN` 仍可作为兼容兜底。
+- 兼容性收录的令牌按 `compatibility.token` → 环境变量 `GITHUB_TOKEN` → `github_issues.token` 的顺序取用。fine-grained token 是按仓库授权的：若反馈用的 token 只授权了主仓库，需在 GitHub 令牌设置里把兼容性仓库一并加入 `Issues: write` 权限，或为 `[compatibility].token` 单独填写令牌；收录失败不影响本地记录。
 - 网页研究会先经 `web-search-search_web` 查找结果，再由 `public-web-fetch_public_url` 打开官方页面或 README 核验；不再依赖把搜索 URL 当作普通网页抓取。搜索服务使用 DuckDuckGo 并在包内按需回退，公开搜索源仍可能临时限流；若失败，界面会显示真实工具错误，而不是笼统提示“所有引擎不可用”。运行包固定在 `runtime/mcp_web_search`，升级时应先在测试环境重新做 MCP 握手和检索验证。
 - `qwen3.8:latest` 可以工作，但 Copilot 官方文档建议 Agent 使用更大的上下文窗口；若工具调用频繁失败，应先提高 Ollama 的上下文长度，而不是开放 shell/write 权限。
 - `monitor_all_group_messages = true` 会开启群消息批量分流，而非逐条调用模型。默认通过 `group_batch_size = 50` 与 `group_batch_wait_seconds = 600`（10 分钟）控制吞吐和最长等待；这两个值可在网页控制台修改。需要极低负载时设为 `false`，保留 @机器人、昵称与产品求助关键词触发。
