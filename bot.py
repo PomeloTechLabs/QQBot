@@ -67,13 +67,16 @@ def main() -> None:
     logger.info("Support Agent: %s", "Copilot CLI" if config.agent.enabled else "disabled")
 
     bot = BotCore(config)
-    start_web_thread(
-        config,
-        knowledge_store=bot.knowledge_store,
-        knowledge_candidates=bot.knowledge_candidates,
-        agent_activity=bot.agent_activity,
-        port=8080,
-    )
+    if config.web.enabled:
+        start_web_thread(
+            config,
+            knowledge_store=bot.knowledge_store,
+            knowledge_candidates=bot.knowledge_candidates,
+            agent_activity=bot.agent_activity,
+            port=config.web.port,
+        )
+    else:
+        logger.info("WebUI disabled by config")
 
     try:
         asyncio.run(bot.run())

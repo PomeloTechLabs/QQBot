@@ -211,6 +211,14 @@ class CompatibilityConfig:
 
 
 @dataclass
+class WebUIConfig:
+    """网页控制台设置；端口被其他程序占用时可改 port。"""
+
+    enabled: bool = True
+    port: int = 8080
+
+
+@dataclass
 class KnowledgeBaseConfig:
     json_file: str = "data/knowledge_base.json"
     render_file: str = "data/knowledge_base.md"
@@ -232,6 +240,7 @@ class AppConfig:
     feedback: FeedbackConfig = field(default_factory=FeedbackConfig)
     github_issues: GitHubIssuesConfig = field(default_factory=GitHubIssuesConfig)
     compatibility: CompatibilityConfig = field(default_factory=CompatibilityConfig)
+    web: WebUIConfig = field(default_factory=WebUIConfig)
     knowledge_base: KnowledgeBaseConfig = field(default_factory=KnowledgeBaseConfig)
     ollama: OllamaConfig = field(default_factory=OllamaConfig)
     agent: AgentConfig = field(default_factory=AgentConfig)
@@ -340,6 +349,10 @@ class AppConfig:
                 "api_base_url": self.compatibility.api_base_url,
                 "timeout": self.compatibility.timeout,
             },
+            "web": {
+                "enabled": self.web.enabled,
+                "port": self.web.port,
+            },
             "knowledge_base": {
                 "json_file": self.knowledge_base.json_file,
                 "render_file": self.knowledge_base.render_file,
@@ -414,6 +427,7 @@ def load_config(path: str | Path = "config.toml") -> AppConfig:
     kb_raw = raw.get("knowledge_base", {})
     github_issues_raw = raw.get("github_issues", {})
     compatibility_raw = raw.get("compatibility", {})
+    web_raw = raw.get("web", {})
     ollama_raw = raw.get("ollama", {})
     agent_raw = raw.get("agent", {})
 
@@ -559,6 +573,10 @@ def load_config(path: str | Path = "config.toml") -> AppConfig:
                 compatibility_raw.get("api_base_url", "https://api.github.com")
             ).rstrip("/"),
             timeout=max(5, int(compatibility_raw.get("timeout", 20))),
+        ),
+        web=WebUIConfig(
+            enabled=bool(web_raw.get("enabled", True)),
+            port=max(1, int(web_raw.get("port", 8080))),
         ),
         knowledge_base=KnowledgeBaseConfig(
             json_file=str(kb_raw.get("json_file", "data/knowledge_base.json")),

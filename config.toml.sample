@@ -134,6 +134,12 @@ include_media_links = true
 api_base_url = "https://api.github.com"
 timeout = 20
 
+# ==================== 网页控制台 ====================
+# 端口被其他程序占用时修改 port；enabled = false 可关闭控制台
+[web]
+enabled = true
+port = 8080
+
 # ==================== 本地知识库 ====================
 [knowledge_base]
 json_file = "data/knowledge_base.json"
