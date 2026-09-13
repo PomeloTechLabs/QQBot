@@ -220,6 +220,7 @@ python -m unittest discover -s tests -v
 
 ## 文档
 
+- [docs/architecture.md](docs/architecture.md) —— **架构与使用手册**（系统拓扑、模块职责、消息处理流程、收集链路规则、Web 控制台、数据文件、部署运维、管理命令全表）
 - [docs/design.md](docs/design.md) —— 架构与模块设计（消息过滤、上下文缓存、OneBot v11 协议、管理命令）
 - [docs/agent_runtime.md](docs/agent_runtime.md) —— Agent 运行细节（Copilot CLI 接入 Ollama、64K 上下文与 GPU 调优、知识学习流程、运营建议）
 
